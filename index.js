@@ -20,9 +20,21 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
     try{
         await client.connect();
         const userCollection = client.db('parts_master').collection('users');
+        const partCollection = client.db('parts_master').collection('parts');
+        const reviewCollection = client.db('parts_master').collection('reviews');
         console.log("i am running");
-
-        app.get('/user', async(req,res)=>{
+        // review area 
+        app.get('/reviews',async(req, res)=>{
+          const reviews = (await reviewCollection.find().toArray()).reverse();
+          res.send(reviews)
+        })
+        // part area 
+        app.get('/parts',async(req, res)=>{
+          const parts = (await partCollection.find().toArray()).reverse()
+          res.send(parts);
+        })
+        // user area 
+        app.get('/users', async(req,res)=>{
           const users = await userCollection.find().toArray();
           res.send(users)
         })
