@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const app = express();
 require('dotenv').config();
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 
@@ -28,16 +28,27 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
           const reviews = (await reviewCollection.find().toArray()).reverse();
           res.send(reviews)
         })
-        // part area 
+        // --------part area---------
+
+        // get all parts 
         app.get('/parts',async(req, res)=>{
           const parts = (await partCollection.find().toArray()).reverse()
           res.send(parts);
+        });
+        
+        // get one part by id 
+        app.get('/parts/:id',async(req, res)=>{
+          const id = req.params.id;
+          const find = {_id:ObjectId(id)};
+          const result = await partCollection.findOne(find);
+          res.send(result);
         })
+
         // user area 
         app.get('/users', async(req,res)=>{
           const users = await userCollection.find().toArray();
           res.send(users)
-        })
+        });
 
         app.put('/user/:email', async(req, res)=>{
           const email = req.params.email;
@@ -45,15 +56,14 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
           const filter = {email:email}
           const options = { upsert: true };
           const updateDoc = {
-
             $set: user
       
           };
-          
           const result = await userCollection.updateOne(filter, updateDoc, options);
           const token = jwt.sign({email:email}, process.env.ACCESS_TOKEN_SECRET,{expiresIn: '1d'})
-          res.send({result, token})
-        })
+          res.send({result, token});
+        });
+
         
     }
     finally{
