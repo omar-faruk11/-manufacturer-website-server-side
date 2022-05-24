@@ -18,8 +18,7 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 const verifyJWT = ( req, res, next) =>{
-  const authHeader = req.params.authorization;
-
+  const authHeader = req.headers.authorization;
   if(!authHeader){
     return res.status(401).send({success: false, message:'UnAuthorized access'});
   }
@@ -47,11 +46,11 @@ const verifyJWT = ( req, res, next) =>{
           res.send(reviews)
         });
 
-         app.post('/review'),verifyJWT, async(req, res)=>{
+         app.post('/reviews', verifyJWT, async(req, res)=>{
            const review = req.body;
            const result = await reviewCollection.insertOne(review);
            res.send(result);
-         }
+         })
         // --------part area---------
 
         
@@ -67,22 +66,31 @@ const verifyJWT = ( req, res, next) =>{
           const find = {_id:ObjectId(id)};
           const result = await partCollection.findOne(find);
           res.send(result);
-        })
+        });
 
         // add a product 
         app.post('/parts',verifyJWT, async(req, res)=>{
-          const parts = req.body;
-          const result = await partCollection.insertOne(parts);
+          const part = req.body;
+          const result = await partCollection.insertOne(part);
+          res.send(result);
+        });
+
+        app.delete('/parts/:id',verifyJWT, async(req, res)=>{
+          const id = req.params.id;
+          const part = {_id:ObjectId(id)};
+          const result = await partCollection.deleteOne(part);
           res.send(result);
         })
 
+        
         // user area 
         app.get('/users',verifyJWT, async(req,res)=>{
           const users = await userCollection.find().toArray();
           res.send(users)
         });
 
-        app.put('/user/:email', async(req, res)=>{
+
+        app.put('/users/:email', async(req, res)=>{
           const email = req.params.email;
           const user = req.body;
           const filter = {email:email}
@@ -97,7 +105,7 @@ const verifyJWT = ( req, res, next) =>{
         });
 
         //make a admin 
-        app.put('user/admin/:email', verifyJWT, async(req, res)=>{
+        app.put('/users/admin/:email', verifyJWT, async(req, res)=>{
           const email = req.params.email;
           const filter = {email};
           const updateDoc = {
