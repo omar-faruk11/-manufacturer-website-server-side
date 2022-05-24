@@ -5,6 +5,7 @@ const app = express();
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { decode } = require('jsonwebtoken');
 
 
 
@@ -15,6 +16,23 @@ app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.razje.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+
+const verifyJWT = ( req, res, next) =>{
+  const authHeader = req.params.authorization;
+
+  if(!authHeader){
+    return res.status(401).send({success: false, message:'UnAuthorized access'});
+  }
+  const token = authHeader.split(' ')[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET,(error, decoded )=>{
+    if(error){
+      return res.status(403).send({success:false, message:'Forbidden access'});
+    }
+    res.decoded = decoded;
+    next();
+  })
+
+}
 
  const run = async() =>{
     try{
@@ -27,9 +45,16 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
         app.get('/reviews',async(req, res)=>{
           const reviews = (await reviewCollection.find().toArray()).reverse();
           res.send(reviews)
-        })
+        });
+
+         app.post('/review'),verifyJWT, async(req, res)=>{
+           const review = req.body;
+           const result = await reviewCollection.insertOne(review);
+           res.send(result);
+         }
         // --------part area---------
 
+        
         // get all parts 
         app.get('/parts',async(req, res)=>{
           const parts = (await partCollection.find().toArray()).reverse()
@@ -45,7 +70,7 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
         })
 
         // user area 
-        app.get('/users', async(req,res)=>{
+        app.get('/users',verifyJWT, async(req,res)=>{
           const users = await userCollection.find().toArray();
           res.send(users)
         });
