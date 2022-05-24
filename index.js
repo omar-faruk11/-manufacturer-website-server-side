@@ -69,6 +69,13 @@ const verifyJWT = ( req, res, next) =>{
           res.send(result);
         })
 
+        // add a product 
+        app.post('/parts',verifyJWT, async(req, res)=>{
+          const parts = req.body;
+          const result = await partCollection.insertOne(parts);
+          res.send(result);
+        })
+
         // user area 
         app.get('/users',verifyJWT, async(req,res)=>{
           const users = await userCollection.find().toArray();
