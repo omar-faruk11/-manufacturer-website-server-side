@@ -96,6 +96,28 @@ const verifyJWT = ( req, res, next) =>{
           res.send({result, token});
         });
 
+        //make a admin 
+        app.put('user/admin/:email', verifyJWT, async(req, res)=>{
+          const email = req.params.email;
+          const filter = {email};
+          const updateDoc = {
+            $set: { role: 'admin' },
+          };
+          const result = await userCollection.updateOne(filter,updateDoc);
+          res.send(result);
+        })
+
+        // get admin 
+        app.get('/admin/:email', async(req, res)=>{
+          const email = req.params.email;
+          const query = {email}
+          const user = await userCollection.findOne(query);
+          
+          const isAdmin = user.role === 'admin';
+          res.send(isAdmin)
+
+        })
+
         
     }
     finally{
