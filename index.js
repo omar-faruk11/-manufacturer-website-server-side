@@ -5,7 +5,6 @@ const app = express();
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const { decode } = require('jsonwebtoken');
 
 
 
@@ -31,7 +30,7 @@ const verifyJWT = ( req, res, next) =>{
     next();
   })
 
-}
+};
 
  const run = async() =>{
     try{
@@ -39,6 +38,7 @@ const verifyJWT = ( req, res, next) =>{
         const userCollection = client.db('parts_master').collection('users');
         const partCollection = client.db('parts_master').collection('parts');
         const reviewCollection = client.db('parts_master').collection('reviews');
+        const orderCollection = client.db('parts_master').collection('order');
         console.log("i am running");
         // review area 
         app.get('/reviews',async(req, res)=>{
@@ -50,7 +50,7 @@ const verifyJWT = ( req, res, next) =>{
            const review = req.body;
            const result = await reviewCollection.insertOne(review);
            res.send(result);
-         })
+         });
         // --------part area---------
 
         
@@ -75,13 +75,13 @@ const verifyJWT = ( req, res, next) =>{
           res.send(result);
         });
 
+
         app.delete('/parts/:id',verifyJWT, async(req, res)=>{
           const id = req.params.id;
           const part = {_id:ObjectId(id)};
           const result = await partCollection.deleteOne(part);
           res.send(result);
-        })
-
+        });
         
         // user area 
         app.get('/users',verifyJWT, async(req,res)=>{
@@ -125,6 +125,21 @@ const verifyJWT = ( req, res, next) =>{
           res.send(isAdmin)
 
         })
+        // order area 
+
+        // get orders 
+        app.get('/orders/:email',verifyJWT, async(req, res)=>{
+          const email = req.params.email;
+          const orders = await orderCollection.find({email}).toArray();
+          res.send(orders);
+        });
+        
+        // post order 
+        app.post('/orders', async(req, res)=>{
+          const order = req.body;
+          const result = await orderCollection.insertOne(order);
+          res.send(result);
+        })
 
         
     }
@@ -138,8 +153,8 @@ run().catch(console.dir);
 
 app.get('/', (req, res) => {
     res.send('Hello World!')
-  })
+  });
   
   app.listen(port, () => {
     console.log(`App listening on port ${port}`);
-  })
+  });
