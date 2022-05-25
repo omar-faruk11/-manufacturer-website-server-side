@@ -133,14 +133,31 @@ const verifyJWT = ( req, res, next) =>{
           const orders = await orderCollection.find({email}).toArray();
           res.send(orders);
         });
-        
+
+        // get order by id
+      app.get('/orders/:id', verifyJWT, async(req, res)=>{
+        const id = req.params.id;
+        const query = {_id:ObjectId(id)};
+        const order = await orderCollection.findOne(query).toArray();
+        res.send(order)
+      })
+
         // post order 
         app.post('/orders', async(req, res)=>{
           const order = req.body;
           const result = await orderCollection.insertOne(order);
           res.send(result);
-        })
+        });
 
+        // Delete order
+        app.delete('/orders/:id', verifyJWT, async(req, res)=>{
+          const id = req.params.id;
+          const query = {_id:ObjectId(id)};
+          const result = await orderCollection.deleteOne(query);
+          res.send(result);
+        });
+
+        
         
     }
     finally{
