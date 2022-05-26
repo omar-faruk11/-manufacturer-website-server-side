@@ -20,13 +20,13 @@ const verifyJWT = ( req, res, next) =>{
   const authHeader = req.headers.authorization;
   if(!authHeader){
     return res.status(401).send({success: false, message:'UnAuthorized access'});
-  }
+  };
   const token = authHeader.split(' ')[1];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET,(error, decoded )=>{
     if(error){
       return res.status(403).send({success:false, message:'Forbidden access'});
-    }
-    res.decoded = decoded;
+    };
+    req.decoded = decoded;
     next();
   })
 
@@ -41,6 +41,18 @@ const verifyJWT = ( req, res, next) =>{
         const orderCollection = client.db('parts_master').collection('order');
         const paymentCollection = client.db('parts_master').collection('payment');
         console.log("i am running");
+
+        const verifyAdmin = async(req, res,next)=>{
+          const persone = req.decoded.email;
+          const personerAccount = await userCollection.findOne({ email: persone });
+          if (personerAccount.role === 'admin') {
+            next();
+          }
+          else {
+              res.status(403).send({ message: 'forbidden' });
+          }
+        }; 
+                 
         // review area 
         app.get('/reviews',async(req, res)=>{
           const reviews = (await reviewCollection.find().toArray()).reverse();
@@ -70,14 +82,14 @@ const verifyJWT = ( req, res, next) =>{
         });
 
         // add a product 
-        app.post('/parts',verifyJWT, async(req, res)=>{
+        app.post('/parts',verifyJWT,verifyAdmin, async(req, res)=>{
           const part = req.body;
           const result = await partCollection.insertOne(part);
           res.send(result);
         });
 
 
-        app.delete('/parts/:id',verifyJWT, async(req, res)=>{
+        app.delete('/parts/:id',verifyJWT,verifyAdmin, async(req, res)=>{
           const id = req.params.id;
           const part = {_id:ObjectId(id)};
           const result = await partCollection.deleteOne(part);
@@ -85,11 +97,18 @@ const verifyJWT = ( req, res, next) =>{
         });
         
         // user area 
-        app.get('/users',verifyJWT, async(req,res)=>{
+        app.get('/users',verifyJWT,verifyAdmin, async(req,res)=>{
           const users = await userCollection.find().toArray();
           res.send(users)
         });
 
+        // get user by id
+        app.get('/user',verifyJWT, async(req, res)=>{
+          const email = req.query.email;
+          const filter = {email};
+          const user = await userCollection.findOne(filter);
+          res.send(user);
+        })
 
         app.put('/users/:email', async(req, res)=>{
           const email = req.params.email;
@@ -101,12 +120,12 @@ const verifyJWT = ( req, res, next) =>{
       
           };
           const result = await userCollection.updateOne(filter, updateDoc, options);
-          const token = jwt.sign({email:email}, process.env.ACCESS_TOKEN_SECRET,{expiresIn: '1d'})
+          const token = jwt.sign({email:email}, process.env.ACCESS_TOKEN_SECRET,{expiresIn:'10h'})
           res.send({result, token});
         });
 
         //make a admin 
-        app.put('/users/admin/:email', verifyJWT, async(req, res)=>{
+        app.put('/users/admin/:email', verifyJWT,verifyAdmin, async(req, res)=>{
           const email = req.params.email;
           const filter = {email};
           const updateDoc = {
@@ -129,7 +148,6 @@ const verifyJWT = ( req, res, next) =>{
         // order area 
         app.post('/create-payment-intent',verifyJWT, async(req, res)=>{
           const order = req.body;
-          console.log(order);
           const price = order.totalPrice;
           const amount = price * 100;
 
@@ -139,11 +157,16 @@ const verifyJWT = ( req, res, next) =>{
             payment_method_types:['card']
           });
           res.send({clientSecret: paymentIntent.client_secret});
-        })
+        });
+        // get all orders 
+        app.get('/orders',verifyJWT,verifyAdmin, async(req, res)=>{
+          const orders = await orderCollection.find().toArray();
+          res.send(orders);
+        });
         // get orders 
-        app.get('/orders/:email',verifyJWT, async(req, res)=>{
-          const email = req.params.email;
-          const orders = await orderCollection.find({email}).toArray();
+        app.get('/uorders',verifyJWT, async(req, res)=>{
+          const email = req.query.email;
+          const orders = await orderCollection.find({email:email}).toArray();
           res.send(orders);
         });
 
@@ -159,8 +182,6 @@ const verifyJWT = ( req, res, next) =>{
         app.patch('/orders/:id', verifyJWT, async(req, res)=>{
           const id = req.params.id;
           const payment = req.body;
-          console.log(payment);
-          console.log(payment.transactionId);
           const filter ={_id:ObjectId(id)};
           const updateDoc = {
             $set: {
@@ -173,6 +194,18 @@ const verifyJWT = ( req, res, next) =>{
           const result = await orderCollection.updateOne(filter,updateDoc);
             res.send(result);
         })
+        app.patch('/orders/shipped/:id', verifyJWT, verifyAdmin, async(req, res)=>{
+          const id = req.params.id;
+          const filter ={_id:ObjectId(id)};
+          const updateDoc = {
+            $set: {
+              shipped: true,
+            }
+            
+          };
+          const result = await orderCollection.updateOne(filter,updateDoc);
+          res.send(result);
+        });
         // post order 
         app.post('/orders', async(req, res)=>{
           const order = req.body;
